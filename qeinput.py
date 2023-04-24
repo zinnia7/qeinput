@@ -22,7 +22,7 @@ keyword_defaults = {
         "ibrav": 0,
         "nat": 0,
         "ntyp": 0,
-                "ecutwfc": 30,
+        "ecutwfc": 30,
         "ecutrho": 180,
         "occupations": ["'smearing'","'tetrahedra'","'fixed'"],
         "smearing": ["'gauss'","'mp'","'mv'","'fd'"],
@@ -30,7 +30,7 @@ keyword_defaults = {
         "nspin": [1,2],
         "tot_magnetization": 0,
         "starting_magnetization(1)": [-1,1],
-                "edir": [1,2,3],
+        "edir": [1,2,3],
         "emaxpos": 0.5,
         "eopreg": 0.1
     },
