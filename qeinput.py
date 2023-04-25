@@ -346,7 +346,7 @@ save_button = ttk.Button(root, text="Save Input File", command=save_input_file, 
 save_button.grid(column=0, row=2)
 
 info_button = ttk.Button(root, text="?", command=show_info, width=2)
-info_button.grid(column=4,row=6)
+info_button.grid(column=3,row=6)
 
 pseudo_buttons = []
 
