@@ -195,9 +195,7 @@ def add_keyword():
     else:
         value = value_entry.get()
 
-    if section == "&CELL":
-        added_keywords[section][keyword] = value
-
+    added_keywords[section][keyword] = value
     update_text()
 
 def update_input_widget(*args):
