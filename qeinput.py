@@ -57,11 +57,13 @@ def load_input_file():
     if not file_path:
         return
 
+    atoms = read(file_path, format="espresso-in")
+    view(atoms)
+
     with open(file_path, "r") as input_file:
         lines = input_file.readlines()
 
     current_section = None
-    cell_parameters = []
     atomic_positions = []
     for line in lines:
         line = line.strip()
@@ -74,51 +76,53 @@ def load_input_file():
         elif line.startswith("/"):
             current_section = None
         elif line.startswith("CELL_PARAMETERS"):
-            if line.split(" ")[1] == "angstrom":
-                current_section = line.split(" ")[0]
+            if line.split()[1] == "angstrom":
+                current_section = line.split()[0]
+                added_keywords[current_section] = {}
             else:
                 print("Only 'CELL_PARAMETERS angstrom' value can be parsed!")
                 break
         elif line.startswith("ATOMIC_SPECIES"):
-            current_section = line.split(" ")[0]
+            current_section = line.split()[0]
+            added_keywords[current_section] = {}
         elif line.startswith("ATOMIC_POSITIONS"):
-            if line.split(" ")[1] == "angstrom":
-                current_section = line.split(" ")[0]
+            if line.split()[1] == "angstrom":
+                current_section = line.split()[0]
+                added_keywords[current_section] = {}
             else:
                 print("Only 'ATOMIC_POSITIONS angstrom' value can be parsed!")
                 break
         elif line.startswith("K_POINTS"):
-            if line.split(" ")[1] == "automatic":
-                current_section = line.split(" ")[0]
+            if line.split()[1] == "automatic":
+                current_section = line.split()[0]
+                added_keywords[current_section] = {}
             else:
                 print("Only 'K_POINTS automatic' value can be parsed!")
                 break
         elif current_section:
-            n = len(line.split(" "))
+            n = len(line.split())
             if "=" in line:
                 key, value = line.split("=", 1)
                 key = key.strip()
                 value = value.strip(", ")
                 added_keywords[current_section][key] = value
-            elif current_section == "CELL_PARAMETERS" and n == 3:
-                cell_parameters.append(line.split(" "))
             elif current_section == "ATOMIC_SPECIES" and n == 3:
-                species_list = line.split(" ")
+                species_list = line.split()
                 added_keywords[current_section][species_list[0]] = (species_list[1], species_list[2])
             elif current_section == "ATOMIC_POSITIONS" and n == 7:
-                species = line.split(" ")[0]
-                coordinates = np.float_(line.split(" ")[1:4])
-                constraints = [True if i == '0' else False for i in line.split(" ")[4:7]]
+                species = line.split()[0]
+                coordinates = np.float_(line.split()[1:4])
+                constraints = [True if i == '0' else False for i in line.split()[4:7]]
                 atomic_positions.append(([species, coordinates, constraints]))
 
             elif current_section == "K_POINTS" and n == 6:
-                added_keywords[current_section] = line.split(" ")
+                added_keywords[current_section] = line.split()
 
-    cell_parameters = [[float(s) for s in cellp] for cellp in cell_parameters]
-    added_keywords["CELL_PARAMETERS"] = cell_parameters
+    added_keywords["CELL_PARAMETERS"] = atoms.get_cell()
     added_keywords["ATOMIC_POSITIONS"] = atomic_positions
 
     update_text()
+    update_pseudo_buttons()
 
 def open_ase_view():
     blank_atoms = atoms.Atoms()
@@ -224,7 +228,7 @@ def load_cif():
 
     added_keywords["CELL_PARAMETERS"] = atoms.get_cell()
     added_keywords["ATOMIC_SPECIES"] = {}
-    added_keywords["ATOMIC_POSITIONS"] = []
+    added_keywords["ATOMIC_POSITIONS"] = {}
     unique_elements = set()
 
     for atom in atoms:
@@ -252,7 +256,7 @@ def load_ase_json():
 
     added_keywords["CELL_PARAMETERS"] = atoms.get_cell()
     added_keywords["ATOMIC_SPECIES"] = {}
-    added_keywords["ATOMIC_POSITIONS"] = []
+    added_keywords["ATOMIC_POSITIONS"] = {}
     unique_elements = set()
 
     for atom in atoms:
