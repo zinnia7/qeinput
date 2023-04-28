@@ -2,8 +2,8 @@
 
 import os
 from ase.io import read
-from ase import atoms
 from ase.visualize import view
+from ase.constraints import FixAtoms
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import numpy as np
@@ -57,14 +57,14 @@ def load_input_file():
     if not file_path:
         return
 
-    atoms = read(file_path, format="espresso-in")
-    view(atoms)
-
     with open(file_path, "r") as input_file:
         lines = input_file.readlines()
 
+    atoms = read(file_path, format="espresso-in")
+
     current_section = None
     atomic_positions = []
+    ase_constraints = []
     for line in lines:
         line = line.strip()
         if not line:
@@ -113,6 +113,7 @@ def load_input_file():
                 species = line.split()[0]
                 coordinates = np.float_(line.split()[1:4])
                 constraints = [True if i == '0' else False for i in line.split()[4:7]]
+                ase_constraints.append(constraints[0])
                 atomic_positions.append(([species, coordinates, constraints]))
 
             elif current_section == "K_POINTS" and n == 6:
@@ -124,9 +125,17 @@ def load_input_file():
     update_text()
     update_pseudo_buttons()
 
-def open_ase_view():
-    blank_atoms = atoms.Atoms()
-    view(blank_atoms)
+    atoms.set_constraint(FixAtoms(mask=ase_constraints))
+    view(atoms)
+
+def open_qe_out():
+    file_path = filedialog.askopenfilename(filetypes=[("QE output files", "*.out")])
+    if not file_path:
+        return
+    file_name = os.path.basename(file_path)
+
+    atoms = read(file_name, format="espresso-out", index=":")
+    view(atoms)
 
 def select_pseudo(element):
     file_path = filedialog.askopenfilename(filetypes=[("Pseudopotential files", "*.UPF")])
@@ -239,7 +248,8 @@ def load_cif():
 
     default_constraints = [[False]*3 for i in range(len(atoms))]
     added_keywords["ATOMIC_POSITIONS"] = [(atom.symbol, atom.position, default_constraints[i]) for i, atom in enumerate(atoms)]
-    added_keywords["K_POINTS"] = [1, 1, 1, 0, 0, 0]
+    if added_keywords["K_POINTS"] == None:
+        added_keywords["K_POINTS"] = [1, 1, 1, 0, 0, 0]
     added_keywords["&SYSTEM"]["ibrav"] = 0
     added_keywords["&SYSTEM"]["nat"] = len(atoms)
     added_keywords["&SYSTEM"]["ntyp"] = len(unique_elements)
@@ -272,7 +282,8 @@ def load_ase_json():
     constraints_status = [[True]*3 if i in fixed_atoms_indices else [False]*3 for i in range(len(atoms))]
 
     added_keywords["ATOMIC_POSITIONS"] = [(atom.symbol, atom.position, constraints_status[i]) for i, atom in enumerate(atoms)]
-    added_keywords["K_POINTS"] = [1, 1, 1, 0, 0, 0]
+    if added_keywords["K_POINTS"] == None:
+        added_keywords["K_POINTS"] = [1, 1, 1, 0, 0, 0]
     added_keywords["&SYSTEM"]["ibrav"] = 0
     added_keywords["&SYSTEM"]["nat"] = len(atoms)
     added_keywords["&SYSTEM"]["ntyp"] = len(unique_elements)
@@ -301,7 +312,7 @@ keyword_var = tk.StringVar()
 keyword_var.trace("w", update_input_widget)
 value_var = tk.StringVar()
 
-load_ase_view_button = ttk.Button(root, text="Open ASE View", command=open_ase_view, width=15)
+load_ase_view_button = ttk.Button(root, text="View QE output", command=open_qe_out, width=15)
 load_ase_view_button.grid(column=1, row=0, padx=(0,100))
 
 load_cif_button = ttk.Button(root, text="Load CIF", command=load_cif, width=15)
