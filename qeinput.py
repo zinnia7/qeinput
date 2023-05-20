@@ -248,7 +248,7 @@ def load_cif():
 
     default_constraints = [[False]*3 for i in range(len(atoms))]
     added_keywords["ATOMIC_POSITIONS"] = [(atom.symbol, atom.position, default_constraints[i]) for i, atom in enumerate(atoms)]
-    if added_keywords["K_POINTS"] == None:
+    if len(added_keywords["K_POINTS"]) != 6:
         added_keywords["K_POINTS"] = [1, 1, 1, 0, 0, 0]
     added_keywords["&SYSTEM"]["ibrav"] = 0
     added_keywords["&SYSTEM"]["nat"] = len(atoms)
