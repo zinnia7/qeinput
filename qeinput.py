@@ -132,9 +132,8 @@ def open_qe_out():
     file_path = filedialog.askopenfilename(filetypes=[("QE output files", "*.out")])
     if not file_path:
         return
-    file_name = os.path.basename(file_path)
 
-    atoms = read(file_name, format="espresso-out", index=":")
+    atoms = read(file_path, format="espresso-out", index=":")
     view(atoms)
 
 def select_pseudo(element):
