@@ -48,6 +48,7 @@ keyword_defaults = {
     },
     "&CELL": {
         "cell_dynamics": ["'bfgs'","'damp-w'","'damp-pr'"],
+        "press_conv_thr": 0.5
         "cell_dofree": ["'all'","'shape'","'2Dxy'"]
     }
 }
