@@ -282,7 +282,7 @@ def load_ase_json():
     constraints_status = [[True]*3 if i in fixed_atoms_indices else [False]*3 for i in range(len(atoms))]
 
     added_keywords["ATOMIC_POSITIONS"] = [(atom.symbol, atom.position, constraints_status[i]) for i, atom in enumerate(atoms)]
-    if added_keywords["K_POINTS"] == None:
+    if len(added_keywords["K_POINTS"]) != 6:
         added_keywords["K_POINTS"] = [1, 1, 1, 0, 0, 0]
     added_keywords["&SYSTEM"]["ibrav"] = 0
     added_keywords["&SYSTEM"]["nat"] = len(atoms)
