@@ -136,7 +136,7 @@ def load_input_file():
     view(atoms)
 
 def open_qe_out():
-    file_path = filedialog.askopenfilename(filetypes=[("QE output files", "*.pwo")])
+    file_path = filedialog.askopenfilename(filetypes=[("QE output files", "*.out")])
     if not file_path:
         return
 
