@@ -50,11 +50,14 @@ keyword_defaults = {
         "cell_dynamics": ["'bfgs'","'damp-w'","'damp-pr'"],
         "press_conv_thr": 0.5,
         "cell_dofree": ["'all'","'shape'","'2Dxy'"]
+    },
+    "K_POINTS": {
+        "K_POINTS": ["automatic 1 1 1 0 0 0", "gamma"],
     }
 }
 
 def load_input_file():
-    file_path = filedialog.askopenfilename(filetypes=[("Input files", "*.in")])
+    file_path = filedialog.askopenfilename(filetypes=[("Input files", "*.pwi")])
     if not file_path:
         return
 
@@ -94,11 +97,11 @@ def load_input_file():
                 print("Only 'ATOMIC_POSITIONS angstrom' value can be parsed!")
                 break
         elif line.startswith("K_POINTS"):
-            if line.split()[1] == "automatic":
+            if line.split()[1] == "automatic" or line.split()[1] == "gamma":
                 current_section = line.split()[0]
-                added_keywords[current_section] = {}
+                added_keywords[current_section]["K_POINTS"] = line.split()[1]
             else:
-                print("Only 'K_POINTS automatic' value can be parsed!")
+                print("Only 'K_POINTS automatic or gamma' value can be parsed!")
                 break
         elif current_section:
             n = len(line.split())
@@ -110,15 +113,18 @@ def load_input_file():
             elif current_section == "ATOMIC_SPECIES" and n == 3:
                 species_list = line.split()
                 added_keywords[current_section][species_list[0]] = (species_list[1], species_list[2])
-            elif current_section == "ATOMIC_POSITIONS" and n == 7:
+            elif current_section == "ATOMIC_POSITIONS" and (n == 7 or n == 4):
                 species = line.split()[0]
                 coordinates = np.float_(line.split()[1:4])
-                constraints = [True if i == '0' else False for i in line.split()[4:7]]
+                if n == 7:
+                    constraints = [True if i == '0' else False for i in line.split()[4:7]]
+                else:
+                    constraints = [False, False, False]
                 ase_constraints.append(constraints[0])
                 atomic_positions.append(([species, coordinates, constraints]))
 
             elif current_section == "K_POINTS" and n == 6:
-                added_keywords[current_section] = line.split()
+                added_keywords[current_section]["K_POINTS"] += " " + line
 
     added_keywords["CELL_PARAMETERS"] = atoms.get_cell()
     added_keywords["ATOMIC_POSITIONS"] = atomic_positions
@@ -130,7 +136,7 @@ def load_input_file():
     view(atoms)
 
 def open_qe_out():
-    file_path = filedialog.askopenfilename(filetypes=[("QE output files", "*.out")])
+    file_path = filedialog.askopenfilename(filetypes=[("QE output files", "*.pwo")])
     if not file_path:
         return
 
@@ -194,10 +200,16 @@ def update_text():
             input_text.insert(tk.END, f"{element:2s} {position[0]:10.6f} {position[1]:10.6f} {position[2]:10.6f} {' '.join(fixed_status)}\n")
 
     if "K_POINTS" in added_keywords:
-        input_text.insert(tk.END, "K_POINTS automatic\n")
-        nk = added_keywords["K_POINTS"]
-        if nk:
-            input_text.insert(tk.END, f"{nk[0]} {nk[1]} {nk[2]} {nk[3]} {nk[4]} {nk[5]}\n")
+        if added_keywords["K_POINTS"]:
+            nk = added_keywords["K_POINTS"]["K_POINTS"].split()
+            if nk[0] == "automatic":
+                input_text.insert(tk.END, f"K_POINTS {nk[0]}\n")
+                input_text.insert(tk.END, f"{nk[1]} {nk[2]} {nk[3]} {nk[4]} {nk[5]} {nk[6]}\n")
+            else:
+                input_text.insert(tk.END, f"K_POINTS {nk[0]}\n")
+        else:
+            input_text.insert(tk.END, "K_POINTS automatic\n")
+            input_text.insert(tk.END, "1 1 1 0 0 0\n")
 
 def add_keyword():
     section = section_var.get()
@@ -248,42 +260,6 @@ def load_cif():
 
     default_constraints = [[False]*3 for i in range(len(atoms))]
     added_keywords["ATOMIC_POSITIONS"] = [(atom.symbol, atom.position, default_constraints[i]) for i, atom in enumerate(atoms)]
-    if len(added_keywords["K_POINTS"]) != 6:
-        added_keywords["K_POINTS"] = [1, 1, 1, 0, 0, 0]
-    added_keywords["&SYSTEM"]["ibrav"] = 0
-    added_keywords["&SYSTEM"]["nat"] = len(atoms)
-    added_keywords["&SYSTEM"]["ntyp"] = len(unique_elements)
-    update_text()
-    update_pseudo_buttons()
-
-def load_ase_json():
-    file_path = filedialog.askopenfilename(filetypes=[("ASE JSON files", "*.json")])
-    if not file_path:
-        return
-
-    atoms = read(file_path, format="json")
-    view(atoms)
-
-    added_keywords["CELL_PARAMETERS"] = atoms.get_cell()
-    added_keywords["ATOMIC_SPECIES"] = {}
-    added_keywords["ATOMIC_POSITIONS"] = {}
-    unique_elements = set()
-
-    for atom in atoms:
-        element = atom.symbol
-        unique_elements.add(element)
-        if element not in added_keywords["ATOMIC_SPECIES"]:
-            added_keywords["ATOMIC_SPECIES"][element] = (atom.mass, "")
-
-    fixed_atoms_indices = set()
-    for constraint in atoms.constraints:
-        fixed_atoms_indices.update(constraint.index)
-
-    constraints_status = [[True]*3 if i in fixed_atoms_indices else [False]*3 for i in range(len(atoms))]
-
-    added_keywords["ATOMIC_POSITIONS"] = [(atom.symbol, atom.position, constraints_status[i]) for i, atom in enumerate(atoms)]
-    if len(added_keywords["K_POINTS"]) != 6:
-        added_keywords["K_POINTS"] = [1, 1, 1, 0, 0, 0]
     added_keywords["&SYSTEM"]["ibrav"] = 0
     added_keywords["&SYSTEM"]["nat"] = len(atoms)
     added_keywords["&SYSTEM"]["ntyp"] = len(unique_elements)
@@ -292,7 +268,7 @@ def load_ase_json():
 
 def save_input_file():
     input_text_content = input_text.get("1.0", tk.END)
-    file_path = filedialog.asksaveasfilename(defaultextension=".in", filetypes=[("Input files", "*.in")])
+    file_path = filedialog.asksaveasfilename(defaultextension=".in", filetypes=[("Input files", "*.pwi")])
     if not file_path:
         return
     with open(file_path, "w") as output_file:
@@ -318,13 +294,10 @@ load_ase_view_button.grid(column=1, row=0, padx=(0,100))
 load_cif_button = ttk.Button(root, text="Load CIF", command=load_cif, width=15)
 load_cif_button.grid(column=0, row=1)
 
-load_ase_json_button = ttk.Button(root, text="Load ASE Json", command=load_ase_json, width=15)
-load_ase_json_button.grid(column=1, row=1, padx=(0,100))
-
 section_label = ttk.Label(root, text="Section:")
 section_label.grid(column=1, row=0, padx=(200,0))
 section_entry = ttk.Combobox(root, width=20, textvariable=section_var)
-section_entry["values"] = [s for s in sections if s.startswith("&")]
+section_entry["values"] = ["&CONTROL","&SYSTEM","&ELECTRONS","&IONS","&CELL","K_POINTS"]
 section_entry.grid(column=2, row=0)
 
 keyword_label = ttk.Label(root, text="Keyword:")
