@@ -268,7 +268,7 @@ def load_cif():
 
 def save_input_file():
     input_text_content = input_text.get("1.0", tk.END)
-    file_path = filedialog.asksaveasfilename(defaultextension=".in", filetypes=[("Input files", "*.pwi")])
+    file_path = filedialog.asksaveasfilename(defaultextension=".in", filetypes=[("Input files", "*.pwi *.in")])
     if not file_path:
         return
     with open(file_path, "w") as output_file:
