@@ -57,7 +57,7 @@ keyword_defaults = {
 }
 
 def load_input_file():
-    file_path = filedialog.askopenfilename(filetypes=[("Input files", "*.pwi")])
+    file_path = filedialog.askopenfilename(filetypes=[("Input files", "*.pwi *.in")])
     if not file_path:
         return
 
