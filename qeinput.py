@@ -60,80 +60,86 @@ def load_input_file():
     file_path = filedialog.askopenfilename(filetypes=[("Input files", "*.pwi *.in")])
     if not file_path:
         return
+    else:
+        _, extension = os.path.splitext(file_path)
+        
+        with open(file_path, "r") as input_file:
+            lines = input_file.readlines()
 
-    with open(file_path, "r") as input_file:
-        lines = input_file.readlines()
+        atoms = read(file_path, format="espresso-in")
 
-    atoms = read(file_path, format="espresso-in")
-
-    current_section = None
-    atomic_positions = []
-    ase_constraints = []
-    for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-
-        if line.startswith("&"):
-            current_section = line.strip()
-            added_keywords[current_section] = {}
-        elif line.startswith("/"):
-            current_section = None
-        elif line.startswith("CELL_PARAMETERS"):
-            if line.split()[1] == "angstrom":
-                current_section = line.split()[0]
-                added_keywords[current_section] = {}
-            else:
-                print("Only 'CELL_PARAMETERS angstrom' value can be parsed!")
-                break
-        elif line.startswith("ATOMIC_SPECIES"):
-            current_section = line.split()[0]
-            added_keywords[current_section] = {}
-        elif line.startswith("ATOMIC_POSITIONS"):
-            if line.split()[1] == "angstrom":
-                current_section = line.split()[0]
-                added_keywords[current_section] = {}
-            else:
-                print("Only 'ATOMIC_POSITIONS angstrom' value can be parsed!")
-                break
-        elif line.startswith("K_POINTS"):
-            if line.split()[1] == "automatic" or line.split()[1] == "gamma":
-                current_section = line.split()[0]
-                added_keywords[current_section]["K_POINTS"] = line.split()[1]
-            else:
-                print("Only 'K_POINTS automatic or gamma' value can be parsed!")
-                break
-        elif current_section:
-            n = len(line.split())
-            if "=" in line:
-                key, value = line.split("=", 1)
-                key = key.strip()
-                value = value.strip(", ")
-                added_keywords[current_section][key] = value
-            elif current_section == "ATOMIC_SPECIES" and n == 3:
-                species_list = line.split()
-                added_keywords[current_section][species_list[0]] = (species_list[1], species_list[2])
-            elif current_section == "ATOMIC_POSITIONS" and (n == 7 or n == 4):
-                species = line.split()[0]
-                coordinates = np.float_(line.split()[1:4])
-                if n == 7:
-                    constraints = [True if i == '0' else False for i in line.split()[4:7]]
+        current_section = None
+        atomic_positions = []
+        ase_constraints = []
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("&"):
+                current_section = line.strip()
+                if extension == ".in":
+                    added_keywords[current_section] = {}
+            elif line.startswith("/"):
+                current_section = None
+            elif line.startswith("CELL_PARAMETERS"):
+                if line.split()[1] == "angstrom":
+                    current_section = line.split()[0]
+                    added_keywords[current_section] = {}
                 else:
-                    constraints = [False, False, False]
-                ase_constraints.append(constraints[0])
-                atomic_positions.append(([species, coordinates, constraints]))
+                    print("Only 'CELL_PARAMETERS angstrom' value can be parsed!")
+                    break
+            elif line.startswith("ATOMIC_SPECIES"):
+                current_section = line.split()[0]
+                added_keywords[current_section] = {}
+            elif line.startswith("ATOMIC_POSITIONS"):
+                if line.split()[1] == "angstrom":
+                    current_section = line.split()[0]
+                    added_keywords[current_section] = {}
+                else:
+                    print("Only 'ATOMIC_POSITIONS angstrom' value can be parsed!")
+                    break
+            elif line.startswith("K_POINTS"):
+                if line.split()[1] == "automatic" or line.split()[1] == "gamma":
+                    current_section = line.split()[0]
+                    if extension == ".in":
+                        added_keywords[current_section]["K_POINTS"] = line.split()[1]
+                else:
+                    print("Only 'K_POINTS automatic or gamma' value can be parsed!")
+                    break
+            elif current_section:
+                n = len(line.split())
+                if "=" in line:
+                    key, value = line.split("=", 1)
+                    key = key.strip()
+                    value = value.strip(", ")
+                    if extension == ".pwi" and (key == "ntyp" or key == "ibrav" or key == "nat"):
+                        added_keywords[current_section][key] = value
+                    elif extension == ".in":
+                        added_keywords[current_section][key] = value
+                elif current_section == "ATOMIC_SPECIES" and n == 3:
+                    species_list = line.split()
+                    added_keywords[current_section][species_list[0]] = (species_list[1], species_list[2])
+                elif current_section == "ATOMIC_POSITIONS" and (n == 7 or n == 4):
+                    species = line.split()[0]
+                    coordinates = np.float_(line.split()[1:4])
+                    if n == 7:
+                        constraints = [True if i == '0' else False for i in line.split()[4:7]]
+                    else:
+                        constraints = [False, False, False]
+                    ase_constraints.append(constraints[0])
+                    atomic_positions.append(([species, coordinates, constraints]))
 
-            elif current_section == "K_POINTS" and n == 6:
-                added_keywords[current_section]["K_POINTS"] += " " + line
+                elif current_section == "K_POINTS" and n == 6 and extension == ".in":
+                    added_keywords[current_section]["K_POINTS"] += " " + line
 
-    added_keywords["CELL_PARAMETERS"] = atoms.get_cell()
-    added_keywords["ATOMIC_POSITIONS"] = atomic_positions
+        added_keywords["CELL_PARAMETERS"] = atoms.get_cell()
+        added_keywords["ATOMIC_POSITIONS"] = atomic_positions
 
-    update_text()
-    update_pseudo_buttons()
+        update_text()
+        update_pseudo_buttons()
 
-    atoms.set_constraint(FixAtoms(mask=ase_constraints))
-    view(atoms)
+        atoms.set_constraint(FixAtoms(mask=ase_constraints))
+        view(atoms)
 
 def open_qe_out():
     file_path = filedialog.askopenfilename(filetypes=[("QE output files", "*.out")])
@@ -290,6 +296,9 @@ value_var = tk.StringVar()
 
 load_ase_view_button = ttk.Button(root, text="View QE output", command=open_qe_out, width=15)
 load_ase_view_button.grid(column=1, row=0, padx=(0,100))
+
+message_label = tk.Label(root, text="Only structural information\nis loaded from pwi and cif files")
+message_label.grid(column=1, row=1,padx=(0,100))
 
 load_cif_button = ttk.Button(root, text="Load CIF", command=load_cif, width=15)
 load_cif_button.grid(column=0, row=1)
