@@ -7,7 +7,7 @@ Simple Quantum-Espresso Input Generator
 2. Add input keywords and values for each section
    or load previous conditions from input file (*.in)
 3. Load structure data : "Load CIF" or "Load Input File (*.pwi)"
-4. Select PP filse for each species
+4. Select PP files for each species
 5. Add additional input parameters by typing in the text box
 6. Save input file (*.in)
 
