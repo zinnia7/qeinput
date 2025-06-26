@@ -121,7 +121,7 @@ def load_input_file():
                     added_keywords[current_section][species_list[0]] = (species_list[1], species_list[2])
                 elif current_section == "ATOMIC_POSITIONS" and (n == 7 or n == 4):
                     species = line.split()[0]
-                    coordinates = np.float_(line.split()[1:4])
+                    coordinates = np.float64(line.split()[1:4])
                     if n == 7:
                         constraints = [True if i == '0' else False for i in line.split()[4:7]]
                     else:
